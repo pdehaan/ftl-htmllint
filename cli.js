@@ -1,6 +1,6 @@
-"use strict";
+#!/usr/bin/env node
 
-const {lintLocales} = require("./lib");
+const {lintLocales} = require("./index");
 
 const [, , ...argv] = process.argv;
 
