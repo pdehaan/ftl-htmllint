@@ -1,70 +1,167 @@
-const readFileSync = require("fs").readFileSync;
-const promisify = require("util").promisify;
+const readFile = require("fs").readFileSync;
 
-const {parse} = require("fluent-syntax");
-const _glob = require("glob");
+const flSyn = require("fluent-syntax");
+const glob = require("glob").sync;
 const lint = require("htmllint");
 
-const glob = promisify(_glob);
+/**
+ * Lint a glob of files.
+ * @param {string} g A glob of file(s) to lint.
+ */
+async function lintLocales(g) {
+  try {
+    if (!g) {
+      throw new Error("Usage: $ npx pdehaan/fluent-html-lint './locales/*/app.ftl'");
+    }
+    const locales = glob(g);
+    for (const locale of locales) {
+      await lintLocale(locale);
+    }
+  } catch (err) {
+    console.error(err.message);
+    // eslint-disable-next-line no-process-exit
+    process.exit(1);
+  }
+}
+
+
 
 /**
- * Converts an .ftl file into a JSON object.
- * @param {string} p A path to an .ftl file to load and parse into a JSON blob.
- * @returns {object}
+ * Load a specific *.ftl file, convert it to JSON, then run each name/value pair through the HTML linter.
+ * @param {string} locale A path to a *.ftl file to parse.
  */
-function ftlToJson(p) {
-  const str = readFileSync(p, "utf-8");
-  return parse(str).body;
+async function lintLocale(locale) {
+  const entries = ftlToJson(locale);
+
+  for (const entry of entries) {
+    await lintHtml(locale, entry);
+  }
 }
 
 /**
- * Converts the specified .ftl file into JSON and runs the htmllint linter against each string.
- * @param {string} p A path to an .ftl file to lint.
- * @returns {null}
+ * Convert an *.ftl file to JSON.
+ * @param {string} ftlPath
+ * @returns {array}
  */
-async function lintLocale(p) {
-  const strings = ftlToJson(p);
-  for (const item of strings) {
-    if (item.type === "GroupComment") return;
+function ftlToJson(ftlPath) {
+  const ftl = readFile(ftlPath).toString();
+  const body = flSyn.parse(ftl, {withSpans:false}).body;
 
-    // The "ru" translation has a non-standard `-brand-HIBP` which was causing
-    // `item.value.elements` to be null and throw errors when calling `.map()`.
-    if (!Array.isArray(item.value.elements)) return;
+  return body.map(entry => extract(entry))
+    .filter(entry => entry);
+}
 
-    // If there was no simple text `el.value` it seems to be some ftl variable, so
-    // just replace it with a silly "{?}" placeholder because what does life matter.
-    const str = item.value.elements.map(el => el.value || "{?}").join("");
-    const errors = await lint(str + "\n");
-    if (errors.length) {
-      console.log(p);
-      errors.forEach(err => {
-        console.error(`  - [${err.code}] ${err.rule}: "${item.id.name} = ${str}"`);
+/**
+ * ??
+ * @param {object} entry
+ */
+function extract(entry) {
+  switch (entry.type) {
+    case "GroupComment":
+      // Ignore
+      break;
+    case "Message":
+    case "Term":
+      return _getString(entry);
+    default:
+      console.log("Unknown entry type:", entry.type);
+      return {};
+  }
+}
+
+/**
+ * Loop over translations and make sure each name/value pair passes the HTML linter.
+ * @param {string} locale Path to the *.ftl file we're currently linting.
+ * @param {object} data Object w/ name/value pairs to lint. Note that in some cases .value may be an array of variations.
+ */
+async function lintHtml(locale, data) {
+  if (Array.isArray(data.value)) {
+    data.value.forEach(v => {
+      // Recursive magic...
+      lintHtml(locale, {name: `${v.name}[${v.variant}]`, value: v.value});
+    });
+  } else {
+    const results = await lint(data.value + "\n", {
+      "id-class-style": "dash"
+    });
+    if (results.length) {
+      console.log(locale);
+      results.forEach(err => {
+        console.error(`  - [${err.code}] ${err.rule}: "${data.name} = ${data.value}"`);
       });
     }
   }
 }
 
-/**
- * Loop over a glob of files to run the htmllint linter against.
- * @param {string} g A glob of .ftl files to lint.
- * @returns {null}
- */
-async function lintLocales(globs) {
-  if (!globs.length) {
-    console.info("\n\nUSAGE: `$ npx pdehaan/ftl-htmllint './locales/*/app.ftl'`\n\n");
-    return;
-  }
-  for (const g of globs) {
-    try {
-      const locales = await glob(g);
-      for (const locale of locales) {
-        await lintLocale(locale);
+function _getPattern(name, value) {
+  const variants = [];
+  const str = value.elements.reduce((elements, element) => {
+    switch (element.type) {
+      case "Placeable": {
+        const res = _getPlaceable(name, element.expression);
+        if (Array.isArray(res)) {
+          res.forEach(v => variants.push(v));
+        } else {
+          elements.push(res);
+        }
+        break;
       }
-    } catch (err) {
-      console.error(err);
-      process.exitCode = 1;
+      case "TextElement":
+        elements.push(element.value);
+        break;
+      default:
+        console.error("Unknown value element type:", element.type);
     }
+    return elements;
+  }, []).join("").trim();
+  if (variants.length) {
+    return variants;
   }
+  return str;
+}
+
+function _getPlaceable(name, expression) {
+  switch (expression.type) {
+    case "MessageReference":
+      return ` $${expression.id.name} `;
+    case "SelectExpression":
+      return _getVariants(name, expression.variants);
+    case "TermReference":
+    case "VariableReference":
+      return expression.id.name;
+    case "VariantExpression":
+      return expression.ref.id.name;
+    default:
+      console.error("Unknown element expression type:", expression.type);
+  }
+}
+
+function _getString(data) {
+  return {
+    name: data.id.name,
+    value: _getValue(data)
+  };
+}
+
+function _getValue(data) {
+  switch (data.value.type) {
+    case "Pattern":
+      return _getPattern(data.id && data.id.name, data.value);
+    case "VariantList":
+      return _getVariants(data.id.name, data.value.variants);
+    default:
+      console.error("Unknown value type:", data.value.type);
+  }
+}
+
+function _getVariants(name, variants) {
+  return variants.map(variant => {
+    return {
+      name,
+      variant: variant.key.name || variant.key.value,
+      value: _getValue(variant)
+    };
+  });
 }
 
 module.exports = {
