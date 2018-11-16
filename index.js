@@ -15,7 +15,7 @@ async function lintLocales(g) {
     }
     const locales = glob(g);
     for (const locale of locales) {
-      console.log("linting," locale);
+      console.log("linting", locale);
       await lintLocale(locale);
     }
   } catch (err) {
