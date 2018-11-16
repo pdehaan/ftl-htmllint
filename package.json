@@ -1,7 +1,7 @@
 {
   "name": "ftl-htmllint",
   "description": "A really bad(tm) HTML linter for .ftl files.",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "author": "Peter deHaan <peter@deseloper.com> (https://about.me/peterdehaan)",
   "bin": "cli.js",
   "bugs": {
@@ -13,7 +13,10 @@
     "htmllint": "0.7.2"
   },
   "homepage": "https://github.com/pdehaan/ftl-htmllint#readme",
-  "keywords": ["ftl", "htmllint"],
+  "keywords": [
+    "ftl",
+    "htmllint"
+  ],
   "license": "MPL-2.0",
   "main": "index.js",
   "repository": {
