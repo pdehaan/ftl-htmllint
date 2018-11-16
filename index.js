@@ -15,7 +15,6 @@ async function lintLocales(g) {
     }
     const locales = glob(g);
     for (const locale of locales) {
-      console.log("linting", locale);
       await lintLocale(locale);
     }
   } catch (err) {
@@ -34,8 +33,6 @@ async function lintLocales(g) {
 async function lintLocale(locale) {
   const entries = ftlToJson(locale);
 
-  console.log(JSON.stringify(entries, null, 2));
-
   for (const entry of entries) {
     await lintHtml(locale, entry);
   }
@@ -53,7 +50,7 @@ function ftlToJson(ftlPath) {
   // console.log(JSON.stringify(body, null, 2));
 
   return body.map(entry => extract(entry))
-    .filter(entry => entry);
+    .filter(entry => !!entry);
 }
 
 /**
