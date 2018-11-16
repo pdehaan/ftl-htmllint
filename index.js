@@ -24,14 +24,14 @@ async function lintLocales(g) {
   }
 }
 
-
-
 /**
  * Load a specific *.ftl file, convert it to JSON, then run each name/value pair through the HTML linter.
  * @param {string} locale A path to a *.ftl file to parse.
  */
 async function lintLocale(locale) {
   const entries = ftlToJson(locale);
+
+  // console.log(JSON.stringify(entries, null, 2));
 
   for (const entry of entries) {
     await lintHtml(locale, entry);
@@ -46,8 +46,6 @@ async function lintLocale(locale) {
 function ftlToJson(ftlPath) {
   const ftl = readFile(ftlPath).toString();
   const body = flSyn.parse(ftl, {withSpans:false}).body;
-
-  // console.log(JSON.stringify(body, null, 2));
 
   return body.map(entry => extract(entry))
     .filter(entry => !!entry);
@@ -80,11 +78,12 @@ async function lintHtml(locale, data) {
   if (Array.isArray(data.value)) {
     data.value.forEach(v => {
       // Recursive magic...
-      lintHtml(locale, {name: `${v.name}[${v.variant}]`, value: v.value});
+      lintHtml(locale, {name: `${v.name}[${v.variant || v.attribute}]`, value: v.value});
     });
   } else {
     const results = await lint(data.value + "\n", {
-      "id-class-style": "dash"
+      "id-class-style": "dash",
+      "tag-bans": ["style", "i"]
     });
     if (results.length) {
       console.log(locale);
@@ -149,14 +148,29 @@ function _getString(data) {
 }
 
 function _getValue(data) {
-  switch (data.value.type) {
-    case "Pattern":
-      return _getPattern(data.id && data.id.name, data.value);
-    case "VariantList":
-      return _getVariants(data.id.name, data.value.variants);
-    default:
-      console.error("Unknown value type:", data.value.type);
+  if (data.value) {
+    switch (data.value.type) {
+      case "Pattern":
+        return _getPattern(data.id && data.id.name, data.value);
+      case "VariantList":
+        return _getVariants(data.id.name, data.value.variants);
+      default:
+        console.error("Unknown value type:", data.value.type);
+    }
   }
+  if (data.attributes) {
+    return _getAttributes(data.id.name, data.attributes);
+  }
+}
+
+function _getAttributes(name, attributes) {
+  return attributes.map(attribute => {
+    return {
+      name,
+      attribute: attribute.id.name,
+      value: _getValue(attribute)
+    };
+  });
 }
 
 function _getVariants(name, variants) {
