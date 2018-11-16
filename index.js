@@ -47,7 +47,7 @@ function ftlToJson(ftlPath) {
   const ftl = readFile(ftlPath).toString();
   const body = flSyn.parse(ftl, {withSpans:false}).body;
 
-  // console.log(JSON.stringify(body, null, 2));
+  console.log(JSON.stringify(body, null, 2));
 
   return body.map(entry => extract(entry))
     .filter(entry => !!entry);
@@ -58,6 +58,7 @@ function ftlToJson(ftlPath) {
  * @param {object} entry
  */
 function extract(entry) {
+  console.log("a:", entry.type);
   switch (entry.type) {
     case "GroupComment":
       // Ignore
@@ -98,6 +99,7 @@ async function lintHtml(locale, data) {
 function _getPattern(name, value) {
   const variants = [];
   const str = value.elements.reduce((elements, element) => {
+    console.log("b:", element.type);
     switch (element.type) {
       case "Placeable": {
         const res = _getPlaceable(name, element.expression);
@@ -123,6 +125,7 @@ function _getPattern(name, value) {
 }
 
 function _getPlaceable(name, expression) {
+  console.log("c:", expression.type);
   switch (expression.type) {
     case "CallExpression":
       return ` { ${expression.callee.name}(...) } `;
@@ -149,6 +152,7 @@ function _getString(data) {
 }
 
 function _getValue(data) {
+  console.log("d:", data.value.type);
   switch (data.value.type) {
     case "Pattern":
       return _getPattern(data.id && data.id.name, data.value);
