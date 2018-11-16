@@ -83,6 +83,7 @@ async function lintHtml(locale, data) {
   } else {
     const results = await lint(data.value + "\n", {
       "id-class-style": "dash",
+      "spec-char-escape": false,
       "tag-bans": ["style", "i"]
     });
     if (results.length) {
