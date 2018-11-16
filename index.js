@@ -47,8 +47,10 @@ function ftlToJson(ftlPath) {
   const ftl = readFile(ftlPath).toString();
   const body = flSyn.parse(ftl, {withSpans:false}).body;
 
+  // console.log(JSON.stringify(body, null, 2));
+
   return body.map(entry => extract(entry))
-    .filter(entry => entry);
+    .filter(entry => !!entry);
 }
 
 /**
@@ -122,6 +124,8 @@ function _getPattern(name, value) {
 
 function _getPlaceable(name, expression) {
   switch (expression.type) {
+    case "CallExpression":
+      return ` { ${expression.callee.name}(...) } `;
     case "MessageReference":
       return ` $${expression.id.name} `;
     case "SelectExpression":
@@ -133,6 +137,7 @@ function _getPlaceable(name, expression) {
       return expression.ref.id.name;
     default:
       console.error("Unknown element expression type:", expression.type);
+      // console.log(expression);
   }
 }
 
