@@ -60,6 +60,10 @@ function extract(entry) {
     case "GroupComment":
       // Ignore
       break;
+    case "Junk":
+      console.error("INVALID ENTRY!");
+      console.error(JSON.stringify(entry, null, 2));
+      break;
     case "Message":
     case "Term":
       return _getString(entry);
