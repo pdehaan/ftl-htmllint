@@ -64,6 +64,7 @@ function extract(entry) {
     case "Junk":
       console.error("INVALID ENTRY!");
       console.error(JSON.stringify(entry, null, 2));
+      process.exitCode = 2;
       break;
     case "Message":
     case "Term":
