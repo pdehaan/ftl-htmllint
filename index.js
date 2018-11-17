@@ -58,6 +58,7 @@ function ftlToJson(ftlPath) {
 function extract(entry) {
   switch (entry.type) {
     case "GroupComment":
+    case "ResourceComment":
       // Ignore
       break;
     case "Junk":
