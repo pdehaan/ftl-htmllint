@@ -92,6 +92,9 @@ async function lintHtml(locale, data) {
       "spec-char-escape": false,
       "tag-bans": ["style", "i"]
     });
+    if (data.value.includes("'")) {
+      results.push({code: "APOS", rule:"Found \"'\" instead of \"’\""});
+    }
     if (results.length) {
       console.log(locale);
       results.forEach(err => {
