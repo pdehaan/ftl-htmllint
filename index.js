@@ -95,7 +95,7 @@ async function lintHtml(locale, data) {
     if (results.length) {
       console.log(locale);
       results.forEach(err => {
-        console.error(`  - [${err.code}] ${err.rule}: "${data.name} = ${data.value}"`);
+        console.log(`  - [${err.code}] ${err.rule}: "${data.name} = ${data.value}"`);
       });
     }
   }
