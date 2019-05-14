@@ -92,6 +92,7 @@ async function lintHtml(locale, data) {
       "spec-char-escape": false,
       "tag-bans": ["style", "i"]
     });
+    // This really doesn't seem to work since lots of locales seem to use a regular straight quote.
     if (data.value.includes("'")) {
       results.push({code: "APOS", rule:"Found \"'\" instead of \"’\""});
     }
